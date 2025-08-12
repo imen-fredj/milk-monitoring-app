@@ -1,22 +1,27 @@
 import Measurement from '../models/Measurement.js';
 
 // Helper function: Calculate quality score
-const calculateQualityScore = ({ temperature, ph, weight }) => {
+const calculateQualityScore = ({ temperature, pH, weight, volume }) => {
   let score = 100;
   
-  // Temperature scoring (ideal range: 30-35°C)
+  // Temperature scoring (ideal range: 30–35°C)
   if (temperature > 35 || temperature < 30) {
     score -= Math.abs(32.5 - temperature) * 2;
   }
   
-  // pH scoring (ideal range: 6.5-7.0)
-  if (ph > 7.0 || ph < 6.5) {
-    score -= Math.abs(6.75 - ph) * 10;
+  // pH scoring (ideal range: 6.5–7.0)
+  if (pH > 7.0 || pH < 6.5) {
+    score -= Math.abs(6.75 - pH) * 10;
   }
   
-  // Weight consideration (very light might indicate spoilage)
+  // Weight consideration (light weight might indicate spoilage)
   if (weight < 2) {
     score -= 10;
+  }
+
+  // Volume consideration (low volume might indicate product loss)
+  if (volume < 1) {
+    score -= 5;
   }
   
   return Math.max(0, Math.min(100, score));
@@ -29,7 +34,7 @@ const calculateAverage = (measurements, field) => {
   return parseFloat((sum / measurements.length).toFixed(2));
 };
 
-/////////////////////////////////////////// Get all measurements ///////////////////////////////////////////////////
+// Get all measurements
 export const getAllMeasurements = async (req, res) => {
   try {
     const { limit = 100, offset = 0, sortBy = 'timestamp', order = 'desc' } = req.query;
@@ -52,21 +57,21 @@ export const getAllMeasurements = async (req, res) => {
   }
 };
 
-////////////////////////////////////////////// Create new measurement //////////////////////////////////////////////////////
+// Create new measurement
 export const createMeasurement = async (req, res) => {
   try {
-    const { temperature, ph, weight, freshness } = req.body;
+    const { temperature, pH, weight, volume } = req.body;
     
-    console.log('📥 Received measurement data:', { temperature, ph, weight, freshness });
+    console.log('📥 Received measurement data:', { temperature, pH, weight, volume });
     
-    // Calculate quality score (business logic)
-    const qualityScore = calculateQualityScore({ temperature, ph, weight });
+    // Calculate quality score
+    const qualityScore = calculateQualityScore({ temperature, pH, weight, volume });
     
     const measurement = new Measurement({
       temperature,
-      ph,
+      pH,
       weight,
-      freshness,
+      volume,
       qualityScore
     });
 
@@ -87,10 +92,10 @@ export const createMeasurement = async (req, res) => {
   }
 };
 
-//////////////////////////////////////////////// Get latest measurement /////////////////////////////////////////////////////
+// Get latest measurement
 export const getLatestMeasurement = async (req, res) => {
   try {
-    const measurement = await Measurement.findOne().sort({ timestamp: -1 });
+    const measurement = await Measurement.findOne().sort({ _id: -1 }); // Sort by _id descending
     
     if (!measurement) {
       return res.status(404).json({
@@ -111,7 +116,7 @@ export const getLatestMeasurement = async (req, res) => {
   }
 };
 
-///////////////////////////////////////////////////////// Get analytics //////////////////////////////////////////////////////
+// Get analytics
 export const getAnalytics = async (req, res) => {
   try {
     const { days = 7 } = req.query;
@@ -125,10 +130,9 @@ export const getAnalytics = async (req, res) => {
     const analytics = {
       totalMeasurements: measurements.length,
       averageTemperature: calculateAverage(measurements, 'temperature'),
-      averagePh: calculateAverage(measurements, 'ph'),
+      averagePh: calculateAverage(measurements, 'pH'),
       averageWeight: calculateAverage(measurements, 'weight'),
-      freshCount: measurements.filter(m => m.freshness === 'Fresh').length,
-      spoiledCount: measurements.filter(m => m.freshness === 'Spoiled').length,
+      averageVolume: calculateAverage(measurements, 'volume'),
       averageQualityScore: calculateAverage(measurements, 'qualityScore')
     };
     

@@ -7,7 +7,7 @@ const measurementSchema = new mongoose.Schema({
     min: 0,
     max: 50
   },
-  ph: {
+  pH: {
     type: Number,
     required: true,
     min: 0,
@@ -16,21 +16,13 @@ const measurementSchema = new mongoose.Schema({
   weight: {
     type: Number,
     required: true,
-    min: 0
+    min: 0,
+    max: 20
   },
-  freshness: {
-    type: String,
-    enum: ['Fresh', 'Spoiled', 'Unknown'],
-    default: 'Unknown'
-  },
-  qualityScore: {
+  volume: {
     type: Number,
     min: 0,
-    max: 100
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now
+    max: 20
   }
 });
 

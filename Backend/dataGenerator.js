@@ -4,9 +4,9 @@ import fetch from 'node-fetch'; // You'll need to install: npm install node-fetc
 const generateMockData = () => {
   return {
     temperature: parseFloat((Math.random() * 10 + 30).toFixed(1)), // 30–40°C
-    ph: parseFloat((Math.random() * 2 + 6).toFixed(2)), // 6–8
+    pH: parseFloat((Math.random() * 2 + 6).toFixed(2)), // 6–8
     weight: parseFloat((Math.random() * 5 + 1).toFixed(2)), // 1–6kg
-    freshness: Math.random() > 0.7 ? "Fresh" : (Math.random() > 0.3 ? "Unknown" : "Spoiled"),
+    volume: parseFloat((Math.random() * 4.5 + 0.5).toFixed(2)), //  0.5 L - 5.0 L
   };
 };
 

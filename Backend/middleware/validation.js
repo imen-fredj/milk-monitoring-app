@@ -1,5 +1,5 @@
 export const validateMeasurement = (req, res, next) => {
-  const { temperature, ph, weight } = req.body;
+  const { temperature, pH, weight } = req.body;
   
   const errors = [];
   
@@ -7,7 +7,7 @@ export const validateMeasurement = (req, res, next) => {
     errors.push('Temperature must be a number between 0 and 50');
   }
   
-  if (typeof ph !== 'number' || ph < 0 || ph > 14) {
+  if (typeof pH !== 'number' || pH < 0 || pH > 14) {
     errors.push('pH must be a number between 0 and 14');
   }
   
