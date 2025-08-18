@@ -19,6 +19,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // MAIN URLs
 app.use("/measurements", measurements);
 
+
 mongoose
   .connect("mongodb://localhost/laitDB")
   .then(() => {

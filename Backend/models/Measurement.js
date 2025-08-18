@@ -1,29 +1,47 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const measurementSchema = new mongoose.Schema({
-  temperature: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 50
+  containerId: { type: String, required: true },
+  containerName: { type: String, required: true },
+  temperature: { type: Number, required: true, min: 0, max: 50 },
+  pH: { type: Number, required: true, min: 0, max: 14 },
+  weight: { type: Number, required: true, min: 0, max: 20 },
+  height: { type: Number,  min: 5 },
+  volume: { type: Number, min: 0, max: 6000 },
+
+  qualityScore: { type: Number },
+
+  status: {
+    temperature: {
+      type: String,
+      enum: ["online", "offline", "error"],
+      default: "online",
+    },
+    pH: {
+      type: String,
+      enum: ["online", "offline", "error"],
+      default: "online",
+    },
+    weight: {
+      type: String,
+      enum: ["online", "offline", "error"],
+      default: "online",
+    },
+    volume: {
+      type: String,
+      enum: ["online", "offline", "error"],
+      default: "online",
+    },
   },
-  pH: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 14
+
+  // Network connectivity
+  networkStatus: {
+    type: String,
+    enum: ["online", "offline"],
+    default: "online",
   },
-  weight: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 20
-  },
-  volume: {
-    type: Number,
-    min: 0,
-    max: 20
-  }
+
+  timestamp: { type: Date, default: Date.now },
 });
 
-export default mongoose.model('Measurement', measurementSchema);
+export default mongoose.model("Measurement", measurementSchema);

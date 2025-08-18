@@ -1,4 +1,6 @@
 import Measurement from '../models/Measurement.js';
+import dns from 'dns/promises';
+
 
 // Helper function: Calculate quality score
 const calculateQualityScore = ({ temperature, pH, weight, volume }) => {
@@ -34,40 +36,41 @@ const calculateAverage = (measurements, field) => {
   return parseFloat((sum / measurements.length).toFixed(2));
 };
 
-// Get all measurements
+////////////////////////////////////////////// Get all measurements ////////////////////////////////////////////
 export const getAllMeasurements = async (req, res) => {
   try {
-    const { limit = 100, offset = 0, sortBy = 'timestamp', order = 'desc' } = req.query;
-    
-    const measurements = await Measurement.find()
+    const { containerId, limit = 1000, offset = 0, sortBy = 'timestamp', order = 'desc' } = req.query;
+
+    const query = containerId ? { containerId: parseInt(containerId) } : {};
+
+    const measurements = await Measurement.find(query)
       .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
       .limit(parseInt(limit))
       .skip(parseInt(offset));
-    
+
     res.json({
       success: true,
       data: measurements,
       count: measurements.length
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// Create new measurement
+
+////////////////////////////////////////////// Create new measurement ////////////////////////////////////////////
 export const createMeasurement = async (req, res) => {
   try {
-    const { temperature, pH, weight, volume } = req.body;
-    
-    console.log('📥 Received measurement data:', { temperature, pH, weight, volume });
-    
-    // Calculate quality score
+    const { containerId, containerName, temperature, pH, weight, volume } = req.body;
+
+    console.log('📥 Received measurement data:', { containerId, containerName, temperature, pH, weight, volume });
+
     const qualityScore = calculateQualityScore({ temperature, pH, weight, volume });
-    
+
     const measurement = new Measurement({
+      containerId,
+      containerName,
       temperature,
       pH,
       weight,
@@ -76,9 +79,9 @@ export const createMeasurement = async (req, res) => {
     });
 
     await measurement.save();
-    
+
     console.log('✅ Measurement saved with quality score:', qualityScore);
-    
+
     res.status(201).json({
       success: true,
       data: measurement
@@ -92,15 +95,19 @@ export const createMeasurement = async (req, res) => {
   }
 };
 
-// Get latest measurement
+////////////////////////////////////////////////////// Get latest measurement ////////////////////////////////////////////
 export const getLatestMeasurement = async (req, res) => {
   try {
-    const measurement = await Measurement.findOne().sort({ _id: -1 }); // Sort by _id descending
+    const { containerId } = req.query;
     
+    const query = containerId ? { containerId } : {};
+    
+    const measurement = await Measurement.findOne(query).sort({ timestamp: -1 }); 
+
     if (!measurement) {
       return res.status(404).json({
         success: false,
-        error: 'No measurements found'
+        error: containerId ? `No measurements found for container: ${containerId}` : 'No measurements found'
       });
     }
     
@@ -109,6 +116,7 @@ export const getLatestMeasurement = async (req, res) => {
       data: measurement
     });
   } catch (error) {
+    console.error('Error fetching latest measurement:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -116,7 +124,7 @@ export const getLatestMeasurement = async (req, res) => {
   }
 };
 
-// Get analytics
+////////////////////////////////////////////// Get analytics ////////////////////////////////////////////
 export const getAnalytics = async (req, res) => {
   try {
     const { days = 7 } = req.query;
@@ -141,6 +149,128 @@ export const getAnalytics = async (req, res) => {
       data: analytics
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/////////////////////////////////////////////////////// System Overview ////////////////////////////////////////////
+const SENSOR_LIST = ['temperature', 'pH', 'weight', 'volume'];
+
+export const getSystemStatus = async (req, res) => {
+  try {
+    // Create sensors array from SENSOR_LIST
+    const sensors = SENSOR_LIST.map(sensorType => ({
+      id: sensorType,
+      type: sensorType,
+      name: `${sensorType.charAt(0).toUpperCase() + sensorType.slice(1)} Sensor`,
+      status: "active", // we can implement actual sensor status checking here
+      lastUpdated: new Date().toISOString()
+    }));
+
+    // Network connectivity check (ping Google DNS)
+    let networkOnline = false;
+    try {
+      await dns.lookup('8.8.8.8');
+      networkOnline = true;
+    } catch {
+      networkOnline = false;
+    }
+
+    // Measurements count
+    const measurementsStored = await Measurement.countDocuments();
+
+    res.json({
+      success: true,
+      data: {
+        sensors, 
+        network: {
+          online: networkOnline,
+          latencyMs: networkOnline ? 42 : null // Placeholder latency
+        },
+        measurementsStored
+      }
+    });
+  } catch (error) {
+    console.error('Error in getSystemStatus:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+//////////////////////////////////////////// getContainerSystemStatus  /////////////////////////////////////
+export const getContainerSystemStatus = async (req, res) => {
+  try {
+    const { containerId } = req.params;
+    
+    if (!containerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Container ID is required'
+      });
+    }
+
+    console.log('Looking for measurements with containerId:', containerId, 'type:', typeof containerId);
+
+    // Get the most recent measurement for this container
+    const latestMeasurement = await Measurement.findOne({ containerId: containerId })
+      .sort({ timestamp: -1 });
+
+    console.log('Latest measurement found:', latestMeasurement ? 'Yes' : 'No');
+
+    // Check for recent measurements (last 5 minutes) to determine data flow
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recentMeasurements = await Measurement.find({ 
+      containerId: containerId, 
+      timestamp: { $gte: fiveMinutesAgo } 
+    });
+
+    console.log('Recent measurements count:', recentMeasurements.length);
+
+    // Get measurement count for this specific container
+    const containerMeasurementCount = await Measurement.countDocuments({ containerId: containerId });
+    
+    console.log('Total measurements for container:', containerMeasurementCount);
+
+    // For debugging - let's also check what containerIds exist in the database
+    const allContainerIds = await Measurement.distinct('containerId');
+    console.log('All containerIds in database:', allContainerIds);
+
+    // Network status (this is still global)
+    let networkOnline = false;
+    let networkLatency = null;
+    try {
+      const start = Date.now();
+      await dns.lookup('8.8.8.8');
+      networkLatency = Date.now() - start;
+      networkOnline = true;
+    } catch (error) {
+      networkOnline = false;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        containerId,
+        network: {
+          online: networkOnline,
+          latencyMs: networkLatency
+        },
+        measurementsStored: containerMeasurementCount,
+        lastUpdate: latestMeasurement?.timestamp,
+        dataQuality: {
+          hasRecentData: recentMeasurements.length > 0,
+          lastMeasurementAge: latestMeasurement ? 
+            Math.round((Date.now() - new Date(latestMeasurement.timestamp).getTime()) / 1000) : null
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error in getContainerSystemStatus:', error);
     res.status(500).json({
       success: false,
       error: error.message
