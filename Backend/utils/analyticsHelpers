@@ -1,0 +1,170 @@
+/////////////////////////////////////// Helper function to calculate analytics ///////////////////////////////////////////////
+export const calculateAnalytics = (measurements) => {
+  const weights = measurements.map(m => m.weight).filter(w => w != null);
+  const volumes = measurements.map(m => m.volume).filter(v => v != null);
+  
+  return {
+    weight: {
+      average: Math.round((weights.reduce((a, b) => a + b, 0) / weights.length) * 100) / 100,
+      min: Math.min(...weights),
+      max: Math.max(...weights),
+      trend: calculateTrend(measurements, 'weight'),
+      change: calculateChange(measurements, 'weight')
+    },
+    volume: {
+      average: Math.round((volumes.reduce((a, b) => a + b, 0) / volumes.length) * 100) / 100,
+      min: Math.min(...volumes),
+      max: Math.max(...volumes),
+      trend: calculateTrend(measurements, 'volume'),
+      change: calculateChange(measurements, 'volume')
+    },
+    efficiency: {
+      avgWeightToVolumeRatio: volumes.length > 0 ? 
+        Math.round((weights.reduce((a, b) => a + b, 0) / volumes.reduce((a, b) => a + b, 0)) * 1000) / 1000 : 0
+    }
+  };
+};
+
+/////////////////////////////////////////// Calculate trend (increasing, decreasing, stable) ///////////////////////////////////
+export const calculateTrend = (measurements, field) => {
+  if (measurements.length < 2) return 'stable';
+  
+  const firstHalf = measurements.slice(0, Math.floor(measurements.length / 2));
+  const secondHalf = measurements.slice(Math.floor(measurements.length / 2));
+  
+  const firstAvg = firstHalf.reduce((sum, m) => sum + (m[field] || 0), 0) / firstHalf.length;
+  const secondAvg = secondHalf.reduce((sum, m) => sum + (m[field] || 0), 0) / secondHalf.length;
+  
+  const difference = secondAvg - firstAvg;
+  const threshold = firstAvg * 0.05; // 5% threshold
+  
+  if (difference > threshold) return 'increasing';
+  if (difference < -threshold) return 'decreasing';
+  return 'stable';
+};
+
+//////////////////////////////////////// Calculate percentage change from first to last measurement //////////////////////////////
+export const calculateChange = (measurements, field) => {
+  if (measurements.length < 2) return 0;
+  
+  const first = measurements[0][field];
+  const last = measurements[measurements.length - 1][field];
+  
+  if (!first || first === 0) return 0;
+  
+  return Math.round(((last - first) / first) * 10000) / 100; // Percentage
+};
+
+// Generate quality insights
+export const generateQualityInsights = (measurements) => {
+  const analytics = calculateAnalytics(measurements);
+  const insights = [];
+  
+  // Weight insights
+  if (analytics.weight.trend === 'increasing') {
+    insights.push({
+      type: 'weight',
+      level: 'info',
+      message: `Weight is trending upward by ${Math.abs(analytics.weight.change)}%`
+    });
+  } else if (analytics.weight.trend === 'decreasing') {
+    insights.push({
+      type: 'weight',
+      level: 'warning',
+      message: `Weight is declining by ${Math.abs(analytics.weight.change)}%`
+    });
+  }
+  
+  // Volume insights
+  if (analytics.volume.trend === 'increasing') {
+    insights.push({
+      type: 'volume',
+      level: 'positive',
+      message: `Volume is growing by ${Math.abs(analytics.volume.change)}%`
+    });
+  } else if (analytics.volume.trend === 'decreasing') {
+    insights.push({
+      type: 'volume',
+      level: 'warning',
+      message: `Volume is decreasing by ${Math.abs(analytics.volume.change)}%`
+    });
+  }
+  
+  // Efficiency insights
+  const ratio = analytics.efficiency.avgWeightToVolumeRatio;
+  if (ratio > 0.02) {
+    insights.push({
+      type: 'efficiency',
+      level: 'positive',
+      message: 'High weight-to-volume ratio indicates good density'
+    });
+  } else if (ratio < 0.01) {
+    insights.push({
+      type: 'efficiency',
+      level: 'info',
+      message: 'Low weight-to-volume ratio - check for optimal conditions'
+    });
+  }
+  
+  return insights;
+};
+
+// Helper function to format date
+export const formatDate = (dateObj) => {
+  const { year, month, day, hour } = dateObj;
+  const date = new Date(year, month - 1, day, hour || 0);
+  return hour !== undefined 
+    ? date.toISOString().slice(0, 13) + ':00'
+    : date.toISOString().slice(0, 10);
+};
+
+// Calculate statistical values for arrays
+export const calculateStats = (values) => {
+  if (values.length === 0) return { min: 0, max: 0, average: 0, median: 0 };
+  
+  const sorted = [...values].sort((a, b) => a - b);
+  const sum = values.reduce((a, b) => a + b, 0);
+  
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    average: Math.round((sum / values.length) * 100) / 100,
+    median: sorted.length % 2 === 0 
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)]
+  };
+};
+
+// Calculate variance and standard deviation
+export const calculateVariance = (values) => {
+  if (values.length === 0) return { variance: 0, standardDeviation: 0 };
+  
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / values.length;
+  
+  return {
+    variance: Math.round(variance * 100) / 100,
+    standardDeviation: Math.round(Math.sqrt(variance) * 100) / 100
+  };
+};
+
+// Detect outliers using IQR method
+export const detectOutliers = (values) => {
+  if (values.length < 4) return { outliers: [], cleanValues: values };
+  
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1Index = Math.floor(sorted.length * 0.25);
+  const q3Index = Math.floor(sorted.length * 0.75);
+  
+  const q1 = sorted[q1Index];
+  const q3 = sorted[q3Index];
+  const iqr = q3 - q1;
+  
+  const lowerBound = q1 - 1.5 * iqr;
+  const upperBound = q3 + 1.5 * iqr;
+  
+  const outliers = values.filter(value => value < lowerBound || value > upperBound);
+  const cleanValues = values.filter(value => value >= lowerBound && value <= upperBound);
+  
+  return { outliers, cleanValues, lowerBound, upperBound };
+};

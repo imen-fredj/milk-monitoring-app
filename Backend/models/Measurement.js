@@ -5,7 +5,7 @@ const measurementSchema = new mongoose.Schema({
   containerName: { type: String, required: true },
   temperature: { type: Number, required: true, min: 0, max: 50 },
   pH: { type: Number, required: true, min: 0, max: 14 },
-  weight: { type: Number, required: true, min: 0, max: 20 },
+  weight: { type: Number, required: true, min: 0, max: 60 },
   height: { type: Number,  min: 5 },
   volume: { type: Number, min: 0, max: 6000 },
 
