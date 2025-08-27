@@ -8,6 +8,9 @@ import measurements from "./routes/measurements.js";
 import analytics from "./routes/analytics.js";
 import SavedState from "./routes/savedStates.js";
 import ScheduledSave from "./routes/schedueldSave.js";
+import alerts from "./routes/alerts.js";
+import notifications from "./routes/notifications.js"
+
 
 // Get current filename and directory for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +28,9 @@ app.use("/measurements", measurements);
 app.use("/analytics", analytics);
 app.use("/states", SavedState);
 app.use("/scheduled", ScheduledSave);
+app.use("/alerts", alerts);
+app.use("/notifications", notifications);
+
 
 
 mongoose

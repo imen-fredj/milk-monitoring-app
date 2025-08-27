@@ -1,5 +1,7 @@
 import Measurement from '../models/Measurement.js';
 import dns from 'dns/promises';
+import { evaluateAlertsForMeasurement } from "../lib/alertEngine.js";
+
 
 
 // Helper function: Calculate quality score
@@ -80,11 +82,27 @@ export const createMeasurement = async (req, res) => {
 
     await measurement.save();
 
+    // 🔔 Evaluate alerts and get triggered notifications
+    const triggeredAlerts = await evaluateAlertsForMeasurement({ Measurement }, measurement);
+
+    // If there are triggered alerts, broadcast notifications to connected clients
+    if (triggeredAlerts && triggeredAlerts.length > 0) {
+      console.log(`🚨 Broadcasting ${triggeredAlerts.length} notifications`);
+      
+      // Broadcast each notification to SSE clients
+      for (const notification of triggeredAlerts) {
+        if (global.__SSE_BROADCAST__) {
+          global.__SSE_BROADCAST__(notification);
+        }
+      }
+    }
+
     console.log('✅ Measurement saved with quality score:', qualityScore);
 
     res.status(201).json({
       success: true,
-      data: measurement
+      data: measurement,
+      alertsTriggered: triggeredAlerts
     });
   } catch (error) {
     console.error('❌ Error creating measurement:', error);

@@ -43,8 +43,8 @@ const generateMockData = async (container) => {
   return {
     containerId: container.id,
     containerName: container.name,
-    temperature: randomFloat(10, 40, 1), // 30–40°C
-    pH: randomFloat(6, 8, 2),           // 6–8
+    temperature: randomFloat(10, 60, 1), // 30–40°C
+    pH: randomFloat(5, 8, 2),           // 6–8
     weight: randomFloat(1, 60, 2),       // 1–6 kg
     height,                             // cm
     volume,                             // from DB
