@@ -86,6 +86,7 @@ export const getTrendData = async (req, res) => {
     const { containerId } = req.params;
     const { days = 7, interval = 'daily' } = req.query;
 
+    // Calculates the start date
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
 
@@ -113,12 +114,14 @@ export const getTrendData = async (req, res) => {
 
     const trendData = await Measurement.aggregate([
       {
+        // Filter (Keep only measurements from the right container, within the last days)
         $match: {
           containerId,
           timestamp: { $gte: startDate }
         }
       },
       {
+        // For each group (day/hour), calculate avg, max,...
         $group: {
           _id: groupBy,
           avgWeight: { $avg: "$weight" },
@@ -132,10 +135,12 @@ export const getTrendData = async (req, res) => {
         }
       },
       {
+        // Sort result
         $sort: { timestamp: 1 }
       }
     ]);
 
+    // Format response (the final JSON response for the frontend)
     res.json({
       containerId,
       interval,

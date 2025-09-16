@@ -39,7 +39,7 @@ const withinCooldown = (alert) => {
 };
 
 const buildMessage = (alert, measurement) =>
-  `[ALERT] ${alert.name}: ${alert.metric} ${alert.operator} ${alert.threshold} ` +
+  `ALERT ${alert.name}: ${alert.metric} ${alert.operator} ${alert.threshold} ` +
   `(value=${measurement[alert.metric]} at ${measurement.timestamp.toISOString()})`;
 
 /**
