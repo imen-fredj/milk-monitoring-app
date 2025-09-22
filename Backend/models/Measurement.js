@@ -3,13 +3,14 @@ import mongoose from "mongoose";
 const measurementSchema = new mongoose.Schema({
   containerId: { type: String, required: true },
   containerName: { type: String, required: true },
-  temperature: { type: Number, required: true, min: 0, max: 50 },
-  pH: { type: Number, required: true, min: 0, max: 14 },
-  weight: { type: Number, required: true, min: 0, max: 60 },
-  height: { type: Number,  min: 5 },
-  volume: { type: Number, min: 0, max: 6000 },
+  temperature: { type: Number, required: true, min: 0, max: 40 },
+  pH: { type: Number, required: true, min: 5, max: 8 },
+  weight: { type: Number, required: true, min: 0, max: 6000 },
+  height: { type: Number, min: 5 },
+  volume: { type: Number, min: 0, max: 5350 },
+  density: { type: Number, min: 1.025, max: 1.04 },
 
-  qualityScore: { type: Number },
+  // qualityScore: { type: Number },
 
   status: {
     temperature: {

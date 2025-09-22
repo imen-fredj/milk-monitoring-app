@@ -9,6 +9,7 @@ await mongoose.connect("mongodb://localhost:27017/laitDB", {
   useUnifiedTopology: true,
 });
 
+// Containers
 const containers = [
   { id: "milk1", name: "Milk Container 1" },
   { id: "milk2", name: "Milk Container 2" },
@@ -18,6 +19,11 @@ const containers = [
 const randomFloat = (min, max, decimals = 1) =>
   parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
 
+// Utility: pick random density in milk range (g/cm³)
+const randomDensity = (min = 1.025, max = 1.040, decimals = 3) =>
+  parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
+
+// Generate one mock record
 // Generate one mock record
 const generateMockData = async (container) => {
   // Generate random height (simulate sensor)
@@ -28,7 +34,7 @@ const generateMockData = async (container) => {
 
   let volume = null;
   if (heightVolumeDoc) {
-    volume = heightVolumeDoc.volume_L;
+    volume = heightVolumeDoc.volume_L; // assuming stored in L
   } else {
     // If exact height not found, pick the nearest one
     const nearest = await HeightVolume.findOne({
@@ -40,25 +46,40 @@ const generateMockData = async (container) => {
     }
   }
 
+  // Generate density ONCE at the beginning
+  const densityGperCm3 = randomDensity(); // g/cm³
+
+  // Compute logical weight (kg) if volume found
+  let weightKg = null;
+  if (volume != null) {
+    // Use the SAME density we generated above
+    // 1 L = 1000 cm³ → density (g/cm³) * volume(L)*1000 = grams
+    const massGrams = densityGperCm3 * volume * 1000;
+    weightKg = parseFloat((massGrams / 1000).toFixed(1)); // convert g → kg
+  } else {
+    weightKg = randomFloat(0.05, 5.55, 3); // fallback
+  }
+
   return {
     containerId: container.id,
     containerName: container.name,
-    temperature: randomFloat(10, 60, 1), // 30–40°C
-    pH: randomFloat(5, 8, 2),           // 6–8
-    weight: randomFloat(1, 60, 2),       // 1–6 kg
-    height,                             // cm
-    volume,                             // from DB
+    temperature: randomFloat(15, 25, 1),    // ✅ 15–25 °C
+    pH: randomFloat(6.4, 6.8, 2),           // ✅ realistic milk pH
+    weight: weightKg,                       // ✅ consistent with volume
+    height,                                 // cm
+    volume,                                 // L
+    density: densityGperCm3,                // ✅ Use the SAME density used for weight calculation
     timestamp: new Date().toISOString(),
   };
 };
 
+// Send to backend
 const sendDataToBackend = async (data) => {
+  // sending a post request to create the measure
   try {
     const response = await fetch("http://localhost:5000/measurements", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
@@ -80,12 +101,10 @@ const sendDataToBackend = async (data) => {
   }
 };
 
+// Start generation loop
 const startDataGeneration = () => {
   console.log("🚀 Starting mock data generation...");
-  console.log(
-    "📡 Sending data to http://localhost:5000/measurements every 5 seconds for each container"
-  );
-  console.log("Press Ctrl+C to stop\n");
+  console.log("📡 Sending data every 10 seconds for each container\n");
 
   const sendAllContainersData = async () => {
     for (const container of containers) {
@@ -97,7 +116,7 @@ const startDataGeneration = () => {
   // Initial send
   sendAllContainersData();
 
-  // Every 5 seconds
+  // Every 10 seconds
   const interval = setInterval(sendAllContainersData, 10000);
 
   process.on("SIGINT", () => {
