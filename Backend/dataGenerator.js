@@ -1,5 +1,5 @@
 // dataGenerator.js
-import fetch from "node-fetch"; 
+import fetch from "node-fetch";
 import mongoose from "mongoose";
 import HeightVolume from "./models/heightVolumes.js";
 
@@ -19,56 +19,40 @@ const containers = [
 const randomFloat = (min, max, decimals = 1) =>
   parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
 
-// Utility: pick random density in milk range (g/cm³)
-const randomDensity = (min = 1.025, max = 1.040, decimals = 3) =>
-  parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
-
-// Generate one mock record
-// Generate one mock record
+/////// Generate one mock record ///////////
 const generateMockData = async (container) => {
-  // Generate random height (simulate sensor)
-  const height = randomFloat(5, 141.8, 1);
-
-  // Find the closest volume in your collection
-  const heightVolumeDoc = await HeightVolume.findOne({ hauteur_cm: height });
+  const height = randomFloat(5, 141.8, 1); // Generate random height (simulate sensor)
+  const heightVolumeDoc = await HeightVolume.findOne({ hauteur_cm: height }); // Find the closest volume in heightVolumes collection
 
   let volume = null;
   if (heightVolumeDoc) {
-    volume = heightVolumeDoc.volume_L; // assuming stored in L
-  } else {
+    volume = heightVolumeDoc.volume_L;
     // If exact height not found, pick the nearest one
     const nearest = await HeightVolume.findOne({
       hauteur_cm: { $gte: height },
     }).sort({ hauteur_cm: 1 });
-
-    if (nearest) {
-      volume = nearest.volume_L;
-    }
+    if (nearest) volume = nearest.volume_L;
   }
 
-  // Generate density ONCE at the beginning
-  const densityGperCm3 = randomDensity(); // g/cm³
-
-  // Compute logical weight (kg) if volume found
   let weightKg = null;
-  if (volume != null) {
-    // Use the SAME density we generated above
-    // 1 L = 1000 cm³ → density (g/cm³) * volume(L)*1000 = grams
-    const massGrams = densityGperCm3 * volume * 1000;
-    weightKg = parseFloat((massGrams / 1000).toFixed(1)); // convert g → kg
-  } else {
-    weightKg = randomFloat(0.05, 5.55, 3); // fallback
+
+  if (volume != null && volume > 0) {
+    //Compute the valid weight range for this volume
+    const minWeight = 1.025 * volume;
+    const maxWeight = 1.04 * volume;
+
+    //Pick a random weight within that range
+    weightKg = randomFloat(minWeight, maxWeight, 2);
   }
 
   return {
     containerId: container.id,
     containerName: container.name,
-    temperature: randomFloat(15, 25, 1),    // ✅ 15–25 °C
-    pH: randomFloat(6.4, 6.8, 2),           // ✅ realistic milk pH
-    weight: weightKg,                       // ✅ consistent with volume
-    height,                                 // cm
-    volume,                                 // L
-    density: densityGperCm3,                // ✅ Use the SAME density used for weight calculation
+    temperature: randomFloat(15, 25, 1), // ✅ 15–25 °C
+    pH: randomFloat(6.4, 6.8, 2), // ✅ realistic milk pH
+    weight: weightKg, // ✅ consistent with volume
+    height, // cm
+    volume, // L
     timestamp: new Date().toISOString(),
   };
 };

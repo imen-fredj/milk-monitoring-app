@@ -39,8 +39,7 @@ export const createMeasurement = async (req, res) => {
       temperature,
       pH,
       weight,
-      volume,
-      density
+      volume
     } = req.body;
 
     console.log("📥 Received measurement data:", {
@@ -50,8 +49,21 @@ export const createMeasurement = async (req, res) => {
       pH,
       weight,
       volume,
-      density,
     });
+
+    // Calculate density if we have both weight and volume
+    let density = null;
+    if (weight && volume && volume > 0) {
+      // Density = mass / volume
+      // weight is in kg, volume is in L
+      // 1 L = 1000 cm³, so density in kg/L = g/cm³
+      density = parseFloat((weight / volume).toFixed(3));
+      
+      // Validate calculated density is within reasonable milk range
+      if (density < 1.025 || density > 1.040) {
+        console.warn(`⚠️ Calculated density ${density} g/cm³ is outside normal milk range (1.025-1.040)`);
+      }
+    }
 
     const measurement = new Measurement({
       containerId,

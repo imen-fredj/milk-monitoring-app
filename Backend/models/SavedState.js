@@ -7,6 +7,7 @@ const sensorSnapshotSchema = new mongoose.Schema(
     weight: Number,
     height: Number,
     volume: Number,
+    density: Number,
     qualityScore: Number,
     status: {
       temperature: { type: String, enum: ["online", "offline", "error"] },

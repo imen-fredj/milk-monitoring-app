@@ -4,10 +4,10 @@ const alertSchema = new mongoose.Schema({
   name: { type: String, required: true },
 
   // Scope
-  containerId: { type: String, required: false }, // if omitted => applies to all containers
+  containerId: { type: String, required: false }, 
   metric: {
     type: String,
-    enum: ["temperature", "pH", "weight", "volume", "qualityScore"],
+    enum: ["temperature", "pH", "weight", "volume", "density", "qualityScore"],
     required: true
   },
 
@@ -16,8 +16,8 @@ const alertSchema = new mongoose.Schema({
   threshold: { type: Number, required: true },
 
   // Persistence options
-  // durationSec: { type: Number, default: 0 },     // must be violated continuously for this long
-  // cooldownSec: { type: Number, default: 300 },    // suppress duplicates for N seconds after trigger
+  durationSec: { type: Number, default: 0 },     // must be violated continuously for this long
+  cooldownSec: { type: Number, default: 300 },    // suppress duplicates for N seconds after trigger
 
   // Lifecycle
   status: { type: String, enum: ["active", "paused"], default: "active" },

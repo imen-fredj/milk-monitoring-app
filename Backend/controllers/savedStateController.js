@@ -10,7 +10,7 @@ async function getSystemSnapshot(containerId) {
   return { containerId, savedBy: "api", at: new Date().toISOString() };
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////// saveMeasurementState ///////////////////////////////////////////////////////////
 export const saveMeasurementState = async (req, res) => {
   try {
     const {
@@ -19,7 +19,6 @@ export const saveMeasurementState = async (req, res) => {
       stateName,
       description = "",
       tags = [],
-      measurementId, // optional: if provided, use this measurement; else use latest for containerId
     } = req.body;
 
     if (!containerId || !containerName || !stateName) {
@@ -30,23 +29,14 @@ export const saveMeasurementState = async (req, res) => {
     }
 
     let measurement;
-    if (measurementId) {
-      measurement = await Measurement.findById(measurementId);
-      if (!measurement) {
-        return res
-          .status(404)
-          .json({ success: false, error: "Measurement not found" });
-      }
-    } else {
-      measurement = await Measurement.findOne({ containerId }).sort({
-        timestamp: -1,
+    measurement = await Measurement.findOne({ containerId }).sort({
+      timestamp: -1,
+    });
+    if (!measurement) {
+      return res.status(404).json({
+        success: false,
+        error: `No measurements found for container: ${containerId}`,
       });
-      if (!measurement) {
-        return res.status(404).json({
-          success: false,
-          error: `No measurements found for container: ${containerId}`,
-        });
-      }
     }
 
     // Build the embedded snapshot
@@ -56,6 +46,7 @@ export const saveMeasurementState = async (req, res) => {
       weight: measurement.weight,
       height: measurement.height,
       volume: measurement.volume,
+      density: measurement.density,
       qualityScore: measurement.qualityScore,
       status: measurement.status,
       networkStatus: measurement.networkStatus,
@@ -88,7 +79,7 @@ export const saveMeasurementState = async (req, res) => {
   }
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////// getAllSavedstates //////////////////////////////////////////////////////
 
 // Get all saved states
 export const getAllSavedstates = async (req, res) => {
@@ -192,7 +183,7 @@ export const exportSavedStatePdf = async (req, res) => {
     doc.text(`Weight: ${sensorData.weight ?? "—"}`);
     doc.text(`Height: ${sensorData.height ?? "—"}`);
     doc.text(`Volume: ${sensorData.volume ?? "—"}`);
-    doc.text(`Quality Score: ${sensorData.qualityScore ?? "—"}`);
+    doc.text(`Density: ${sensorData.density ?? "—"}`);
     doc.text(`Network: ${sensorData.networkStatus ?? "—"}`);
     doc.text(
       `Measurement Timestamp: ${
