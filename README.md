@@ -31,7 +31,12 @@ cd Backend
 npm install
 npm start
 ```
-### 3 Frontend setup
+### 3 MockData Generation
+```bash
+cd Backend
+node dataGenerator.js 
+```
+### 4 Frontend setup
 ```bash
 cd ../Frontend
 npm install
